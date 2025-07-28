@@ -66,10 +66,15 @@
                 useEffect(() => {
                     if (iconRef.current && window.feather) {
                         const svg = feather.icons[name].toSvg({ class: className, width: size, height: size });
+                        // Clear previous icon before adding new one to prevent conflicts
+                        while (iconRef.current.firstChild) {
+                            iconRef.current.removeChild(iconRef.current.firstChild);
+                        }
                         iconRef.current.innerHTML = svg;
                     }
                 }, [name, className, size]);
-                return <span ref={iconRef}></span>;
+                // Use a div instead of a span for better compatibility with innerHTML replacement
+                return <div ref={iconRef} className="inline-block"></div>;
             };
 
             // --- Load credentials from localStorage on initial load ---
@@ -85,6 +90,13 @@
 
             // --- Google API Script Loading & Manual Auth Handling ---
             useEffect(() => {
+                // ADDED BACK: Log the required redirect URI for the user
+                const redirectUri = window.location.origin + window.location.pathname;
+                console.log("******************** IMPORTANT ********************");
+                console.log("Please add this EXACT URL to your 'Authorized redirect URIs' in the Google Cloud Console:");
+                console.log(redirectUri);
+                console.log("***************************************************");
+
                 window.gapi.load('client', () => {
                     if (!areCredentialsSet) {
                         setGapiReady(true);
@@ -116,11 +128,17 @@
             // --- Load schedule data when user is logged in ---
             useEffect(() => {
                 if (isLoggedIn && gapiReady) {
-                    // Since Firebase is removed, we always fetch fresh.
-                    // A more advanced version could use localStorage for caching.
                     fetchAndProcessChannels();
                 }
             }, [isLoggedIn, gapiReady]);
+
+            // --- Feather Icons Initialization Effect ---
+            useEffect(() => {
+                if (window.feather) {
+                    feather.replace();
+                }
+            }, [channels, status, isLoggedIn, areCredentialsSet, activeTab, selectedChannel, showSettings, error]);
+
 
             // --- Core Logic: Schedule Detection ---
             const detectSchedule = (videos) => {
@@ -199,7 +217,6 @@
                         setProgress({ current: index + 1, total: allSubscriptions.length });
                     }
                     setChannels(processedChannels);
-                    // NOTE: No saveSchedule call needed as Firebase is removed.
                     setStatus('ready');
                 } catch (e) {
                     console.error("Error fetching YouTube data:", e);
@@ -433,7 +450,7 @@
                 if (!gapiReady) {
                     return (
                          <div className="text-center p-8">
-                            <Icon name="loader" className="animate-spin text-indigo-500 mx-auto" size={48} />
+                            <div className="animate-spin text-indigo-500 mx-auto w-12 h-12"><Icon name="loader" size={48}/></div>
                             <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">Initializing...</p>
                         </div>
                     );
@@ -445,6 +462,10 @@
                     return (
                         <div className="text-center p-8">
                             <h2 className="text-2xl font-bold mb-2">Connect Your Account</h2>
+                            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-4 rounded-r-lg">
+                                <p className="font-bold">Configuration Needed</p>
+                                <p>Open the developer console (F12) to find the exact Redirect URI you need to add to your Google Cloud project.</p>
+                            </div>
                             <p className="text-gray-600 dark:text-gray-400 mb-6">Sign in with Google to fetch your subscriptions and build your schedule.</p>
                             <button onClick={handleLogin} disabled={!gapiReady} className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 flex items-center mx-auto disabled:bg-red-400 disabled:cursor-not-allowed">
                                 <Icon name="log-in" className="w-5 h-5 mr-2" /> Sign in with Google
