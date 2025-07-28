@@ -169,7 +169,9 @@
             useEffect(() => {
                 // This function finds all icon placeholders and replaces them with SVG.
                 // It needs to be called whenever the UI changes to render new icons.
-                feather.replace();
+                if (window.feather) {
+                    feather.replace();
+                }
             }, [channels, status, isLoggedIn, areCredentialsSet, activeTab, selectedChannel, showSettings]);
 
 
